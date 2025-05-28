@@ -1,0 +1,307 @@
+#include <stdio.h>
+#include <stdint.h>
+#include <stdlib.h>
+#include <string.h>
+#include <unistd.h>
+#include <ncurses.h>
+#include <time.h>
+
+#define WIDTH 80
+#define HEIGHT 24
+#define MAX_SNAKE_LENGTH (WIDTH * HEIGHT)
+
+/* Snake structure */
+typedef struct
+{
+  int x, y;
+} Position;
+
+/* Snake body */
+Position snake[MAX_SNAKE_LENGTH];
+int snake_length = 3;
+
+/* Snake head position and direction */
+int head_x = 40;
+int head_y = 12;
+int x_dir = 1;
+int y_dir = 0;
+
+/* Food position */
+int food_x = 20;
+int food_y = 10;
+
+/* Game state */
+int game_over = 0;
+int score = 0;
+
+/* bitmap to draw at the screen */
+uint8_t bitmap[WIDTH][HEIGHT] = {
+    0,
+};
+
+/* clear bitmap array */
+void clear_bitmap()
+{
+  memset(bitmap, 0, WIDTH * HEIGHT);
+}
+
+/* draw bitmap array on the screen */
+void draw_bitmap()
+{
+  move(0, 0); // move cursor to the top left corner
+  for (int i = 0; i < HEIGHT; i++)
+  {
+    move(i, 0);
+    for (int j = 0; j < WIDTH; j++)
+    {
+      if (bitmap[j][i] == 1)
+      {
+        addch(ACS_CKBOARD); // snake body
+      }
+      else if (bitmap[j][i] == 2)
+      {
+        addch('*'); // food
+      }
+      else
+      {
+        addch(' '); // empty space
+      }
+    }
+  }
+
+  // Display score
+  move(HEIGHT, 0);
+  printw("Score: %d | Length: %d | Press 'q' to quit", score, snake_length);
+
+  if (game_over)
+  {
+    move(HEIGHT / 2, WIDTH / 2 - 5);
+    printw("GAME OVER!");
+    move(HEIGHT / 2 + 1, WIDTH / 2 - 8);
+    printw("Press 'r' to restart");
+  }
+
+  refresh();
+}
+
+/* generate new food at random position */
+void generate_food()
+{
+  int valid_position = 0;
+
+  while (!valid_position)
+  {
+    food_x = rand() % WIDTH;
+    food_y = rand() % HEIGHT;
+
+    // Check if food position conflicts with snake body
+    valid_position = 1;
+    for (int i = 0; i < snake_length; i++)
+    {
+      if (snake[i].x == food_x && snake[i].y == food_y)
+      {
+        valid_position = 0;
+        break;
+      }
+    }
+  }
+}
+
+/* process keyboard inputs */
+void process_input()
+{
+  int ch = getch();
+
+  if (ch == ERR)
+    return; // no input
+
+  /* special character starting with 'ESC' */
+  if (ch == '\033')
+  {
+    getch(); // skip '['
+    switch (getch())
+    {
+    case 'A': // arrow up
+      if (y_dir != 1)
+      { // prevent reverse direction
+        x_dir = 0;
+        y_dir = -1;
+      }
+      break;
+    case 'B': // arrow down
+      if (y_dir != -1)
+      { // prevent reverse direction
+        x_dir = 0;
+        y_dir = 1;
+      }
+      break;
+    case 'C': // arrow right
+      if (x_dir != -1)
+      { // prevent reverse direction
+        x_dir = 1;
+        y_dir = 0;
+      }
+      break;
+    case 'D': // arrow left
+      if (x_dir != 1)
+      { // prevent reverse direction
+        x_dir = -1;
+        y_dir = 0;
+      }
+      break;
+    }
+  }
+  else if (ch == 'w' && y_dir != 1)
+  { // 'w' key
+    x_dir = 0;
+    y_dir = -1;
+  }
+  else if (ch == 's' && y_dir != -1)
+  { // 's' key
+    x_dir = 0;
+    y_dir = 1;
+  }
+  else if (ch == 'a' && x_dir != 1)
+  { // 'a' key
+    x_dir = -1;
+    y_dir = 0;
+  }
+  else if (ch == 'd' && x_dir != -1)
+  { // 'd' key
+    x_dir = 1;
+    y_dir = 0;
+  }
+  else if (ch == 'q')
+  { // 'q' key to quit
+    endwin();
+    exit(0);
+  }
+  else if (ch == 'r' && game_over)
+  { // 'r' key to restart
+    // Reset game state
+    snake_length = 3;
+    head_x = 40;
+    head_y = 12;
+    x_dir = 1;
+    y_dir = 0;
+    score = 0;
+    game_over = 0;
+
+    // Initialize snake
+    for (int i = 0; i < snake_length; i++)
+    {
+      snake[i].x = head_x - i;
+      snake[i].y = head_y;
+    }
+
+    generate_food();
+  }
+}
+
+/* check collision with snake body */
+int check_self_collision()
+{
+  for (int i = 1; i < snake_length; i++)
+  {
+    if (snake[0].x == snake[i].x && snake[0].y == snake[i].y)
+    {
+      return 1;
+    }
+  }
+  return 0;
+}
+
+/* move snake */
+void move_snake()
+{
+  if (game_over)
+    return;
+
+  // Calculate new head position
+  head_x += x_dir;
+  head_y += y_dir;
+
+  // Handle boundary wrapping
+  if (head_x < 0)
+    head_x = WIDTH - 1;
+  if (head_x >= WIDTH)
+    head_x = 0;
+  if (head_y < 0)
+    head_y = HEIGHT - 1;
+  if (head_y >= HEIGHT)
+    head_y = 0;
+
+  // Move body segments
+  for (int i = snake_length - 1; i > 0; i--)
+  {
+    snake[i] = snake[i - 1];
+  }
+
+  // Set new head position
+  snake[0].x = head_x;
+  snake[0].y = head_y;
+
+  // Check if snake ate food
+  if (head_x == food_x && head_y == food_y)
+  {
+    snake_length++;
+    score += 10;
+    generate_food();
+  }
+
+  // Check self collision
+  if (check_self_collision())
+  {
+    game_over = 1;
+  }
+}
+
+/* mark snake and food in bitmap */
+void mark_objects()
+{
+  // Mark snake body
+  for (int i = 0; i < snake_length; i++)
+  {
+    bitmap[snake[i].x][snake[i].y] = 1;
+  }
+
+  // Mark food
+  bitmap[food_x][food_y] = 2;
+}
+
+/* initialize snake */
+void init_snake()
+{
+  for (int i = 0; i < snake_length; i++)
+  {
+    snake[i].x = head_x - i;
+    snake[i].y = head_y;
+  }
+}
+
+int main()
+{
+  srand(time(NULL)); // seed random number generator
+
+  initscr();             // initialize ncurse screen
+  cbreak();              // disable the line break buffer
+  nodelay(stdscr, TRUE); // disable delay to wait keyboard inputs
+  noecho();              // disable input character echos
+  curs_set(0);           // disable cursor visibility
+
+  init_snake();
+  generate_food();
+
+  while (1)
+  {
+    clear_bitmap();
+    process_input();
+    move_snake();
+    mark_objects();
+    draw_bitmap();
+    usleep(150000); // sleep 150 ms (게임 속도 조절)
+  }
+
+  endwin(); // end the ncurses screen
+  return 0;
+}
