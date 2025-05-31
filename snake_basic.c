@@ -6,6 +6,8 @@
 #include <ncurses.h>
 #include <time.h>
 
+// 화면 WIDTH * HEIGHT == 80 * 24
+// Snake Length 제한 = 화면 크기
 #define WIDTH 80
 #define HEIGHT 24
 #define MAX_SNAKE_LENGTH (WIDTH * HEIGHT)
@@ -21,6 +23,7 @@ Position snake[MAX_SNAKE_LENGTH];
 int snake_length = 3;
 
 /* Snake head position and direction */
+// default: x = 40, y = 20 즉 UI 중앙값
 int head_x = 40;
 int head_y = 12;
 int x_dir = 1;
@@ -30,11 +33,12 @@ int y_dir = 0;
 int food_x = 20;
 int food_y = 10;
 
-/* Game state */
+/* Game state Variable*/
 int game_over = 0;
 int score = 0;
 
 /* bitmap to draw at the screen */
+// WIDTH = 80, HEIGHT = 24
 uint8_t bitmap[WIDTH][HEIGHT] = {
     0,
 };
@@ -91,10 +95,14 @@ void generate_food()
 
   while (!valid_position)
   {
+    // random num make by rand()
+    // modulo 연산자 사용 -> inside the bitmap
     food_x = rand() % WIDTH;
     food_y = rand() % HEIGHT;
 
     // Check if food position conflicts with snake body
+    // if conflict -> then lose the game && break generate_food()
+    // break generate_food() -> stop making the food at random position
     valid_position = 1;
     for (int i = 0; i < snake_length; i++)
     {
@@ -108,6 +116,7 @@ void generate_food()
 }
 
 /* process keyboard inputs */
+// default set: prevent reverse direction
 void process_input()
 {
   int ch = getch();
@@ -179,6 +188,7 @@ void process_input()
   else if (ch == 'r' && game_over)
   { // 'r' key to restart
     // Reset game state
+    // but only if this 분기처리 possible in game over
     snake_length = 3;
     head_x = 40;
     head_y = 12;
@@ -294,7 +304,7 @@ int main()
 
   while (1)
   {
-    clear_bitmap();
+    clear_bitmap(); // memset으로 계속 화면 다시 부름 (비효율적인 듯)
     process_input();
     move_snake();
     mark_objects();
