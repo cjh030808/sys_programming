@@ -7,6 +7,10 @@
 
 고성능 ARM 어셈블리 최적화가 적용된 터미널 기반 스네이크 게임 🚀
 
+## NOTION
+
+https://www.notion.so/SYS_PROGRAMMING-Project-201abb72117c80e681a7da3bbe2f8c40?source=copy_link
+
 ## ✨ 특징
 
 - 🔥 **ARM 32비트 어셈블리 최적화**: 핵심 로직을 어셈블리로 구현하여 극한의 성능 달성
@@ -24,7 +28,7 @@ vi ~/.profile >> TERM=xterm-color 추가해주세요.
 ```bash
 # Ubuntu/Debian
 apt-get update
-apt-get apt-get install libncurses-dev
+apt-get install libncurses-dev
 
 ```
 
@@ -83,46 +87,26 @@ gcc -marm -O3 snake.c -o snake -lncurses
 | -------------- | --------- | ---------- | --------- |
 | ARM Cortex-A53 | 100 FPS   | 400+ FPS   | **4x**    |
 | ARM Cortex-A72 | 150 FPS   | 600+ FPS   | **4x**    |
-| x86_64 (호환)  | 200 FPS   | 200 FPS    | 1x        |
 
 ## 🏗️ 프로젝트 구조
 
 ```
-arm-snake-game/
+SYS_PROGRAMMING/
+├── dot.c                # 참고한 기본 소스코드
 ├── snake.c              # 메인 게임 소스코드
 ├── snake_basic.c        # ARM 최적화 없는 기본 버전
 ├── README.md            # README
-├── Makefile             # 빌드 자동화(예정)
-├── docs/                # 문서(예정)
+└── docs/                # 문서(예정)
 │   ├── ASSEMBLY.md      # 어셈블리 최적화 상세 설명(예정)
 │   └── PERFORMANCE.md   # 성능 분석 보고서(예정)
-└── assets/              # 스크린샷 및 데모
+└── assets/              # 스크린샷 및 데모(예정)
     ├── demo.gif
     └── screenshot.png
 ```
 
-## 🔧 고급 컴파일 옵션
-
-```bash
-# 기본 최적화
-make
-
-# 특정 ARM 프로세서 최적화
-make ARCH=cortex-a53
-
-# 디버그 빌드
-make debug
-
-# 프로파일링 빌드
-make profile
-
-# 모든 최적화 적용
-make optimize
-```
-
 ## 📊 코드 품질
 
-- ✅ **메모리 안전**: Valgrind로 메모리 누수 테스트 완료
+- ✅ **메모리 안전**: 정적 메모리 할당 사용 -> 비효율적이여서 수정 예정
 - ✅ **정적 분석**: Clang Static Analyzer 통과
 - ✅ **코딩 표준**: Linux Kernel 코딩 스타일 준수
 
@@ -131,20 +115,11 @@ make optimize
 - 모든 새로운 기능에는 테스트 추가
 - 코드 스타일은 기존 코드를 따라주세요
 
-## 📝 라이센스
-
-이 프로젝트는 MIT 라이센스 하에 배포됩니다. 자세한 내용은 [LICENSE](LICENSE) 파일을 참조하세요.
-
-## 🙏 감사의 말
-
-- [ncurses](https://invisible-island.net/ncurses/) - 터미널 UI 라이브러리
-- ARM Holdings - ARM 아키텍처 문서
-- 오픈소스 커뮤니티의 모든 기여자들
-
 ## 📬 연락처
 
 - 이슈: [GitHub Issues](https://github.com/cjh030808/sys_programming/issues)
-- 이메일: cjh030808@kau.kr
+- 학교 내 이메일: cjh030808@kau.kr
+- 외부 contact: goodjjh1234@gmail.com
 
 ---
 
