@@ -33,6 +33,10 @@ int y_dir = 0;
 int food_x = 20;
 int food_y = 10;
 
+/* Level and Velocity */
+int level = 1;                   
+int sleep_duration = 150000;     
+
 /* Game state Variable*/
 int game_over = 0;
 int score = 0;
@@ -75,7 +79,7 @@ void draw_bitmap()
 
   // Display score
   move(HEIGHT, 0);
-  printw("Score: %d | Length: %d | Press 'q' to quit", score, snake_length);
+  printw("Score: %d | Length: %d | Level: %d | Press 'q' to quit", score, snake_length, level);
 
   if (game_over)
   {
@@ -197,6 +201,10 @@ void process_input()
     score = 0;
     game_over = 0;
 
+    extern void reset_level_tracking();
+
+    reset_level_tracking();
+
     // Initialize snake
     for (int i = 0; i < snake_length; i++)
     {
@@ -289,6 +297,46 @@ void init_snake()
   }
 }
 
+int previous_level = 1;
+
+void reset_level_tracking() {
+  previous_level = 1;
+  level = 1;
+  sleep_duration = 150000; // 초기 속도로 다시 설정!
+}
+
+
+
+void update_level()
+{
+  
+  // 점수에 따라 레벨 계산 (50점마다 1레벨씩 상승)
+  level = score / 50 + 1;
+
+  // 이전보다 레벨이 올라갔을 경우에만 처리
+  if (level > previous_level)
+  {
+    previous_level = level;
+
+    if (sleep_duration > 50000)
+    {
+      sleep_duration -= 20000; // 0.01초 줄이기
+    }
+
+    // 레벨업 메시지 잠깐 출력
+    attron(A_BLINK); // 깜빡이 기능!
+    move(HEIGHT / 2 - 1, WIDTH / 2 - 5);
+    printw("LEVEL UP!");
+    attroff(A_BLINK); 
+
+    move(HEIGHT / 2 + 1, WIDTH / 2 - 8);
+    printw("YOUR LEVEL IS %d", level);
+
+    refresh();
+    usleep(3000000);  // 메시지 잠깐 보여주고 다시 시작
+  }
+}
+
 int main()
 {
   srand(time(NULL)); // seed random number generator
@@ -307,9 +355,10 @@ int main()
     clear_bitmap(); // memset으로 계속 화면 다시 부름 (비효율적인 듯)
     process_input();
     move_snake();
+    update_level();
     mark_objects();
     draw_bitmap();
-    usleep(150000); // sleep 150 ms (게임 속도 조절)
+    usleep(sleep_duration); // 레벨에 따라 속도 반영
   }
 
   endwin(); // end the ncurses screen
