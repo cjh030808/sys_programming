@@ -44,9 +44,14 @@ int y_dir = 0;
 int food_x = 10;
 int food_y = 10;
 
+/* Level and Velocity */
+int level = 1;                   
+int sleep_duration = 150000;     
+
 /* Game state Variable*/
 int game_over = 0;
 int score = 0;
+int previous_level = 1;
 
 /* bitmap to draw at the screen */
 // WIDTH = 80, HEIGHT = 24
@@ -90,7 +95,7 @@ void draw_bitmap()
 
   // Display score
   move(HEIGHT, 0);
-  printw("Score: %d | Length: %d | Press 'q' to quit", score, snake_length);
+  printw("Score: %d | Length: %d | Level: %d | Press 'q' to quit", score, snake_length, level);
 
   if (game_over)
   {
@@ -121,6 +126,13 @@ void init_obstacles()
     obstacles[i].active = 0;
   }
   obstacle_count = 0;
+}
+
+/* initialize level */
+void init_level() {
+  previous_level = 1;
+  level = 1;
+  sleep_duration = 150000; // 초기 속도로 다시 설정!
 }
 
 /* generate new food at random position */
@@ -297,8 +309,22 @@ void process_input()
 
     init_snake();
     init_obstacles();
+    init_level();
     generate_food();
   }
+}
+
+/* check collision with snake body */
+int check_self_collision()
+{
+  for (int i = 1; i < snake_length; i++)
+  {
+    if (snake[0].x == snake[i].x && snake[0].y == snake[i].y)
+    {
+      return 1;
+    }
+  }
+  return 0;
 }
 
 /* check collision between snake and obstacle */
@@ -316,18 +342,6 @@ int check_obstacle_collision()
       {
         return 1; // 몸통 어느 부분이라도 충돌하면 게임 오버
       }
-    }
-  }
-  return 0;
-}
-/* check collision with snake body */
-int check_self_collision()
-{
-  for (int i = 1; i < snake_length; i++)
-  {
-    if (snake[0].x == snake[i].x && snake[0].y == snake[i].y)
-    {
-      return 1;
     }
   }
   return 0;
@@ -399,6 +413,36 @@ void move_obstacles()
   }
 }
 
+void update_level()
+{
+  
+  // 점수에 따라 레벨 계산 (50점마다 1레벨씩 상승)
+  level = score / 50 + 1;
+
+  // 이전보다 레벨이 올라갔을 경우에만 처리
+  if (level > previous_level)
+  {
+    previous_level = level;
+
+    if (sleep_duration > 50000)
+    {
+      sleep_duration -= 20000; // 0.01초 줄이기
+    }
+
+    // 레벨업 메시지 잠깐 출력
+    attron(A_BLINK); // 깜빡이 기능!
+    move(HEIGHT / 2 - 1, WIDTH / 2 - 5);
+    printw("LEVEL UP!");
+    attroff(A_BLINK); 
+
+    move(HEIGHT / 2 + 1, WIDTH / 2 - 8);
+    printw("YOUR LEVEL IS %d", level);
+
+    refresh();
+    usleep(3000000);  // 메시지 잠깐 보여주고 다시 시작
+  }
+}
+
 /* mark snake and food in bitmap */
 void mark_objects()
 {
@@ -446,10 +490,11 @@ int main()
     {
       generate_obstacle();
     }
-
+    
+    update_level();
     mark_objects();
     draw_bitmap();
-    usleep(150000);
+    usleep(sleep_duration);
   }
 
   endwin(); // end the ncurses screen
