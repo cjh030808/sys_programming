@@ -6,11 +6,12 @@
 #include <ncurses.h>
 #include <time.h>
 
-// 화면 WIDTH * HEIGHT == 80 * 24
+// 화면 WIDTH * HEIGHT == 40 * 24
 // Snake Length 제한 = 화면 크기
-#define WIDTH 80
+#define WIDTH 40
 #define HEIGHT 24
 #define MAX_SNAKE_LENGTH (WIDTH * HEIGHT)
+#define MAX_OBSTACLES 10
 
 /* Snake structure */
 typedef struct
@@ -18,19 +19,29 @@ typedef struct
   int x, y;
 } Position;
 
+typedef struct
+{
+  int x, y;
+  int dx, dy; // 이동 방향
+  int active; // 활성 상태 (1: 활성, 0: 비활성)
+} Obstacle;
+
 /* Snake body */
 Position snake[MAX_SNAKE_LENGTH];
 int snake_length = 3;
 
+Obstacle obstacles[MAX_OBSTACLES];
+int obstacle_count = 0;
+
 /* Snake head position and direction */
 // default: x = 40, y = 20 즉 UI 중앙값
-int head_x = 40;
+int head_x = 20;
 int head_y = 12;
 int x_dir = 1;
 int y_dir = 0;
 
 /* Food position */
-int food_x = 20;
+int food_x = 10;
 int food_y = 10;
 
 /* Level and Velocity */
@@ -40,6 +51,7 @@ int sleep_duration = 150000;
 /* Game state Variable*/
 int game_over = 0;
 int score = 0;
+int previous_level = 1;
 
 /* bitmap to draw at the screen */
 // WIDTH = 80, HEIGHT = 24
@@ -70,6 +82,10 @@ void draw_bitmap()
       {
         addch('*'); // food
       }
+      else if (bitmap[j][i] == 3)
+      {
+        addch('#'); // 장애물 표시
+      }
       else
       {
         addch(' '); // empty space
@@ -92,6 +108,33 @@ void draw_bitmap()
   refresh();
 }
 
+/* initialize snake */
+void init_snake()
+{
+  for (int i = 0; i < snake_length; i++)
+  {
+    snake[i].x = head_x - i;
+    snake[i].y = head_y;
+  }
+}
+
+/* initialize obstacle */
+void init_obstacles()
+{
+  for (int i = 0; i < MAX_OBSTACLES; i++)
+  {
+    obstacles[i].active = 0;
+  }
+  obstacle_count = 0;
+}
+
+/* initialize level */
+void init_level() {
+  previous_level = 1;
+  level = 1;
+  sleep_duration = 150000; // 초기 속도로 다시 설정!
+}
+
 /* generate new food at random position */
 void generate_food()
 {
@@ -99,8 +142,7 @@ void generate_food()
 
   while (!valid_position)
   {
-    // random num make by rand()
-    // modulo 연산자 사용 -> inside the bitmap
+    // random num make by rand() inside the bitmap
     food_x = rand() % WIDTH;
     food_y = rand() % HEIGHT;
 
@@ -116,7 +158,71 @@ void generate_food()
         break;
       }
     }
+    for (int i = 0; i < MAX_OBSTACLES; i++)
+    {
+      if (obstacles[i].active &&
+          obstacles[i].x == food_x && obstacles[i].y == food_y)
+      {
+        valid_position = 0;
+        break;
+      }
+    }
   }
+}
+
+/* generate obstacle */
+void generate_obstacle()
+{
+  // limit obstacle < MAX_obstacles
+  if (obstacle_count == MAX_OBSTACLES)
+    return;
+
+  // find not using obstacle in array
+  int slot = -1;
+  for (int i = 0; i < MAX_OBSTACLES; i++)
+  {
+    if (!obstacles[i].active)
+    {
+      slot = i;
+      break;
+    }
+  }
+
+  Obstacle *obs = &obstacles[slot];
+  obs->active = 1;
+
+  // random make obstacle in start point
+  int edge = rand() % 4; // 0: 좌, 1: 우, 2: 상, 3: 하
+
+  switch (edge)
+  {
+  case 0: // left -> right
+    obs->x = 0;
+    obs->y = rand() % HEIGHT;
+    obs->dx = 1;
+    obs->dy = 0;
+    break;
+  case 1: // right -> left
+    obs->x = WIDTH - 1;
+    obs->y = rand() % HEIGHT;
+    obs->dx = -1;
+    obs->dy = 0;
+    break;
+  case 2: // top -> bottom
+    obs->x = rand() % WIDTH;
+    obs->y = 0;
+    obs->dx = 0;
+    obs->dy = 1;
+    break;
+  case 3: // bottom -> top
+    obs->x = rand() % WIDTH;
+    obs->y = HEIGHT - 1;
+    obs->dx = 0;
+    obs->dy = -1;
+    break;
+  }
+
+  obstacle_count++;
 }
 
 /* process keyboard inputs */
@@ -128,7 +234,7 @@ void process_input()
   if (ch == ERR)
     return; // no input
 
-  /* special character starting with 'ESC' */
+  // special character starting with 'ESC'
   if (ch == '\033')
   {
     getch(); // skip '['
@@ -194,24 +300,16 @@ void process_input()
     // Reset game state
     // but only if this 분기처리 possible in game over
     snake_length = 3;
-    head_x = 40;
+    head_x = 20;
     head_y = 12;
     x_dir = 1;
     y_dir = 0;
     score = 0;
     game_over = 0;
 
-    extern void reset_level_tracking();
-
-    reset_level_tracking();
-
-    // Initialize snake
-    for (int i = 0; i < snake_length; i++)
-    {
-      snake[i].x = head_x - i;
-      snake[i].y = head_y;
-    }
-
+    init_snake();
+    init_obstacles();
+    init_level();
     generate_food();
   }
 }
@@ -224,6 +322,26 @@ int check_self_collision()
     if (snake[0].x == snake[i].x && snake[0].y == snake[i].y)
     {
       return 1;
+    }
+  }
+  return 0;
+}
+
+/* check collision between snake and obstacle */
+int check_obstacle_collision()
+{
+  for (int i = 0; i < MAX_OBSTACLES; i++)
+  {
+    if (!obstacles[i].active)
+      continue;
+
+    // 뱀의 모든 몸통 부분과 충돌 검사
+    for (int j = 0; j < snake_length; j++)
+    {
+      if (obstacles[i].x == snake[j].x && obstacles[i].y == snake[j].y)
+      {
+        return 1; // 몸통 어느 부분이라도 충돌하면 게임 오버
+      }
     }
   }
   return 0;
@@ -267,45 +385,33 @@ void move_snake()
     generate_food();
   }
 
-  // Check self collision
-  if (check_self_collision())
-  {
+  // Check collision
+  if (check_self_collision() || check_obstacle_collision())
     game_over = 1;
-  }
 }
 
-/* mark snake and food in bitmap */
-void mark_objects()
+/* move obstacle */
+void move_obstacles()
 {
-  // Mark snake body
-  for (int i = 0; i < snake_length; i++)
+  for (int i = 0; i < MAX_OBSTACLES; i++)
   {
-    bitmap[snake[i].x][snake[i].y] = 1;
+    if (!obstacles[i].active)
+      continue;
+
+    Obstacle *obs = &obstacles[i];
+
+    // obstacle moving (by this dircetion variable)
+    obs->x += obs->dx;
+    obs->y += obs->dy;
+
+    // when obstacle over terminal WIDTH or HEIGHT then remove
+    if (obs->x < 0 || obs->x >= WIDTH || obs->y < 0 || obs->y >= HEIGHT)
+    {
+      obs->active = 0;
+      obstacle_count--;
+    }
   }
-
-  // Mark food
-  bitmap[food_x][food_y] = 2;
 }
-
-/* initialize snake */
-void init_snake()
-{
-  for (int i = 0; i < snake_length; i++)
-  {
-    snake[i].x = head_x - i;
-    snake[i].y = head_y;
-  }
-}
-
-int previous_level = 1;
-
-void reset_level_tracking() {
-  previous_level = 1;
-  level = 1;
-  sleep_duration = 150000; // 초기 속도로 다시 설정!
-}
-
-
 
 void update_level()
 {
@@ -337,6 +443,26 @@ void update_level()
   }
 }
 
+/* mark snake and food in bitmap */
+void mark_objects()
+{
+  // Mark snake body
+  for (int i = 0; i < snake_length; i++)
+  {
+    bitmap[snake[i].x][snake[i].y] = 1;
+  }
+  // Mark obstacles
+  for (int i = 0; i < MAX_OBSTACLES; i++)
+  {
+    if (!obstacles[i].active)
+      continue;
+    bitmap[obstacles[i].x][obstacles[i].y] = 3;
+  }
+
+  // Mark food
+  bitmap[food_x][food_y] = 2;
+}
+
 int main()
 {
   srand(time(NULL)); // seed random number generator
@@ -348,17 +474,27 @@ int main()
   curs_set(0);           // disable cursor visibility
 
   init_snake();
+  init_obstacles();
   generate_food();
 
   while (1)
   {
-    clear_bitmap(); // memset으로 계속 화면 다시 부름 (비효율적인 듯)
+    clear_bitmap();
     process_input();
     move_snake();
+    move_obstacles();
+
+    // random obstacle generate (possibility: 2%)
+    // todo: relate level_process -> then more possibility generate obstacle :), so we should change 50 to any variable(ex. obstacle_possibility?)  jojo
+    if (rand() % 50 == 0)
+    {
+      generate_obstacle();
+    }
+    
     update_level();
     mark_objects();
     draw_bitmap();
-    usleep(sleep_duration); // 레벨에 따라 속도 반영
+    usleep(sleep_duration);
   }
 
   endwin(); // end the ncurses screen
