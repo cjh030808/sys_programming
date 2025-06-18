@@ -20,9 +20,9 @@ https://www.notion.so/SYS_PROGRAMMING-Project-201abb72117c80e681a7da3bbe2f8c40?s
 
 ### 사전 요구사항
 
-vi ~/.profile >> TERM=xterm-color 추가해주세요.
-cat > dot.c 가 ucrt 환경에서는 잘 안될 수 있습니다. 
-putty 를 다운로드 하시고 debian linux를 켜신 후에 ip: localhost, port:2222 로 접속해서 진행해주세요.
+vi ~/.profile >> TERM=xterm-color 추가해주세요.  
+cat > dot.c 가 ucrt 환경에서는 잘 안될 수 있습니다.   
+putty 를 다운로드 하시고 debian linux를 켜신 후에 ip: localhost, port:2222 로 접속해서 진행해주세요.  
 
 ```bash
 # Debian Linux
@@ -36,14 +36,12 @@ apt-get install libncurses-dev
 ```bash
 # 저장소 클론
 git clone https://github.com/cjh030808/sys_programming.git
-cd arm-snake-game
 
 # ARM 최적화 컴파일 (권장)
-gcc -marm -O3 snake.c -o snake -lncurses
-
+gcc -marm -O3 snake_basic.c -o snake_basic -lncurses
 
 # 게임 실행
-./snake
+./snake_basic
 ```
 
 ## 🎮 게임 조작법
@@ -88,6 +86,8 @@ SYS_PROGRAMMING/
 
 - 모든 새로운 기능에는 테스트 추가
 - 코드 스타일은 기존 코드를 따라주세요
+- 새로운 기능을 추가할 때는 반드시 branch 전략을 따라주세요.
+- commit 컨벤션은 Udacity Git Commit Message Style Guide 를 따릅니다.
 
 ## 📬 연락처
 
