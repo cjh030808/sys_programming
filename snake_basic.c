@@ -33,7 +33,7 @@ Obstacle obstacles[MAX_OBSTACLES];
 int obstacle_count = 0;
 
 /* Snake head position and direction */
-// default: x = 40, y = 20 즉 UI 중앙값
+// default: x = 40, y = 24 즉 UI 중앙값
 int head_x = 20;
 int head_y = 12;
 int x_dir = 1;
@@ -51,12 +51,6 @@ int sleep_duration = 150000;
 /* Game state Variable*/
 int game_over = 0;
 int score = 0;
-
-/* bitmap to draw at the screen */
-// WIDTH = 80, HEIGHT = 24
-uint8_t bitmap[WIDTH][HEIGHT] = {
-    0,
-};
 
 /* initialize snake */
 void init_snake()
@@ -82,58 +76,30 @@ void init_level()
   sleep_duration = 150000; // 초기 속도로 다시 설정!
 }
 
-void put_snake()
+/* 전체 화면 그리기 (게임 시작/재시작시만 사용) */
+void draw_full_screen()
 {
+  clear();
+
+  // 뱀 그리기
   for (int i = 0; i < snake_length; i++)
-    bitmap[snake[i].x][snake[i].y] = 1;
-}
-
-void put_food()
-{
-  bitmap[food_x][food_y] = 2;
-}
-
-void put_obstacles()
-{
-  for (int i = 0; i < obstacle_count; i++)
-    bitmap[obstacles[i].x][obstacles[i].y] = 3;
-}
-
-/* clear bitmap array */
-void clear_bitmap()
-{
-  memset(bitmap, 0, WIDTH * HEIGHT);
-}
-
-/* draw bitmap array on the screen */
-void draw_bitmap()
-{
-  move(0, 0); // move cursor to the top left corner
-  for (int i = 0; i < HEIGHT; i++)
   {
-    move(i, 0);
-    for (int j = 0; j < WIDTH; j++)
-    {
-      if (bitmap[j][i] == 1)
-      {
-        addch(ACS_CKBOARD); // snake body
-      }
-      else if (bitmap[j][i] == 2)
-      {
-        addch('*'); // food
-      }
-      else if (bitmap[j][i] == 3)
-      {
-        addch('#'); // obstacle
-      }
-      else
-      {
-        addch(' '); // empty space
-      }
-    }
+    move(snake[i].y, snake[i].x);
+    addch(ACS_CKBOARD);
   }
 
-  // Display score
+  // 음식 그리기
+  move(food_y, food_x);
+  addch('*');
+
+  // 장애물 그리기
+  for (int i = 0; i < obstacle_count; i++)
+  {
+    move(obstacles[i].y, obstacles[i].x);
+    addch('#');
+  }
+
+  // 상태 정보 표시
   move(HEIGHT, 0);
   printw("Score: %d | Length: %d | Level: %d | Press 'q' to quit", score, snake_length, level);
 
@@ -161,37 +127,34 @@ void generate_obstacle()
   // limit obstacle < MAX_obstacles
   if (obstacle_count >= MAX_OBSTACLES)
     return;
-
-  Obstacle *obs = &obstacles[obstacle_count];
-
   // random make obstacle in start point
   int edge = rand() % 4; // 0: 좌, 1: 우, 2: 상, 3: 하
 
   switch (edge)
   {
   case 0: // left -> right
-    obs->x = 0;
-    obs->y = rand() % HEIGHT;
-    obs->dx = 1;
-    obs->dy = 0;
+    obstacles[obstacle_count].x = 0;
+    obstacles[obstacle_count].y = rand() % HEIGHT;
+    obstacles[obstacle_count].dx = 1;
+    obstacles[obstacle_count].dy = 0;
     break;
   case 1: // right -> left
-    obs->x = WIDTH - 1;
-    obs->y = rand() % HEIGHT;
-    obs->dx = -1;
-    obs->dy = 0;
+    obstacles[obstacle_count].x = WIDTH - 1;
+    obstacles[obstacle_count].y = rand() % HEIGHT;
+    obstacles[obstacle_count].dx = -1;
+    obstacles[obstacle_count].dy = 0;
     break;
   case 2: // top -> bottom
-    obs->x = rand() % WIDTH;
-    obs->y = 0;
-    obs->dx = 0;
-    obs->dy = 1;
+    obstacles[obstacle_count].x = rand() % WIDTH;
+    obstacles[obstacle_count].y = 0;
+    obstacles[obstacle_count].dx = 0;
+    obstacles[obstacle_count].dy = 1;
     break;
   case 3: // bottom -> top
-    obs->x = rand() % WIDTH;
-    obs->y = HEIGHT - 1;
-    obs->dx = 0;
-    obs->dy = -1;
+    obstacles[obstacle_count].x = rand() % WIDTH;
+    obstacles[obstacle_count].y = HEIGHT - 1;
+    obstacles[obstacle_count].dx = 0;
+    obstacles[obstacle_count].dy = -1;
     break;
   }
 
@@ -213,14 +176,14 @@ void process_input()
     getch(); // skip '['
     switch (getch())
     {
-    case 'A': // arrow up
+    case 'A': // arrow down
       if (y_dir != 1)
       { // prevent reverse direction
         x_dir = 0;
         y_dir = -1;
       }
       break;
-    case 'B': // arrow down
+    case 'B': // arrow up
       if (y_dir != -1)
       { // prevent reverse direction
         x_dir = 0;
@@ -340,25 +303,22 @@ void move_obstacles()
 {
   for (int i = 0; i < obstacle_count; i++)
   {
-    Obstacle *obs = &obstacles[i];
-
-    // obstacle moving (by this dircetion variable)
-    obs->x += obs->dx;
-    obs->y += obs->dy;
+    obstacle[i].x += obstacle[i].dx;
+    obstacle[i].y += obstacle[i].dy;
 
     // when obstacle over terminal WIDTH or HEIGHT then remove
-    if (obs->x < 0 || obs->x >= WIDTH || obs->y < 0 || obs->y >= HEIGHT)
+    if (obstacle[i].x < 0 || obstacle[i].x >= WIDTH || obstacle[i].y < 0 || obstacle[i].y >= HEIGHT)
     {
       // 해당 장애물을 마지막으로 이동시키고 카운트 감소
       obstacles[i] = obstacles[obstacle_count - 1];
       obstacle_count--;
+      i--;
     }
   }
 }
 
 void update_level()
 {
-
   // 점수에 따라 레벨 계산 (50점마다 1레벨씩 상승)
   level = score / 50 + 1;
 
@@ -369,7 +329,7 @@ void update_level()
 
     if (sleep_duration > 50000)
     {
-      sleep_duration -= 20000; // 0.01초 줄이기
+      sleep_duration -= 20000; // 0.02초 줄이기
     }
 
     // 레벨업 메시지 잠깐 출력
@@ -380,7 +340,7 @@ void update_level()
     printw("YOUR LEVEL IS %d", level);
 
     refresh();
-    usleep(3000000); // 메시지 잠깐 보여주고 다시 시작
+    usleep(1000000); // 1초로 단축
   }
 }
 
@@ -396,27 +356,23 @@ int main()
 
   init_snake();
   init_obstacles();
+  init_level();
   generate_food();
 
   while (1)
   {
-    clear_bitmap();
     process_input();
     move_snake();
     move_obstacles();
 
     // random obstacle generate (possibility: 2%)
-    // todo: relate level_process -> then more possibility generate obstacle :), so we should change 50 to any variable(ex. obstacle_possibility?)  jojo
     if (rand() % 50 == 0)
     {
       generate_obstacle();
     }
 
     update_level();
-    put_snake();
-    put_obstacles();
-    put_food();
-    draw_bitmap();
+    draw_full_screen(); // 부분 렌더링 사용
     usleep(sleep_duration);
   }
 
